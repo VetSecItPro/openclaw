@@ -242,6 +242,33 @@ RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw \
 
 ENV NODE_ENV=production
 
+# Steel Motion patch (sm2, 2026-04-11):
+# Pre-create /home/node/.openclaw and subdirectories with node:node ownership.
+#
+# Why: When a Docker named volume is mounted at /home/node/.openclaw (multi-
+# tenant customer deployments pattern), Docker auto-creates the host directory
+# owned by root because the path doesn't exist in the image to copy
+# ownership/perms from. The node user (uid 1000) then gets EACCES on mkdir
+# when the gateway tries to create /home/node/.openclaw/canvas, workspace,
+# credentials, etc.
+#
+# By pre-creating the directory tree here (BEFORE USER node), Docker will
+# copy the ownership/perms into the volume on first mount (this is Docker's
+# documented "copy on first mount" behavior for empty volumes). This
+# eliminates the need for a prestart chown sidecar for fresh tenants.
+#
+# Note: This does NOT help bind mounts (those always reflect host ownership)
+# or pre-existing volumes. For those cases the provisioning script still runs
+# a one-shot "--user root" chown container, but fresh tenants won't need it.
+RUN mkdir -p /home/node/.openclaw \
+              /home/node/.openclaw/workspace \
+              /home/node/.openclaw/credentials \
+              /home/node/.openclaw/canvas \
+              /home/node/.openclaw/agents \
+              /home/node/.openclaw/media \
+ && chown -R node:node /home/node/.openclaw \
+ && chmod 700 /home/node/.openclaw
+
 # Security hardening: Run as non-root user
 # The node:24-bookworm image includes a 'node' user (uid 1000)
 # This reduces the attack surface by preventing container escape via root privileges
