@@ -478,7 +478,7 @@ export async function buildOllamaProvider(
   opts?: { quiet?: boolean },
 ): Promise<ProviderConfig> {
   const apiBase = resolveOllamaApiBase(configuredBaseUrl);
-  const { reachable, models } = await fetchOllamaModels(apiBase);
+  const reachable = false; const models = []; /* SM-PATCH: skip Ollama probe - using Poe */
   if (!reachable && !opts?.quiet) {
     console.warn(`Ollama could not be reached at ${apiBase}.`);
   }
